@@ -88,7 +88,8 @@ check("外から読むのは文字（Google Fonts）だけ。スクリプト・�
 check("CSP で通信先を自分だけにしている", /connect-src 'self'/.test(html) && !/connect-src[^;"]*https/.test(html));
 check("Math.random は練習・とことんの種だけ（今日の5問・上級は日付の乱数。data.js には無い）", (html.match(/Math\.random/g) || []).length === 2 && !/Math\.random/.test(gen));
 check("乱数は sort の比較の中で引かない（ブラウザで引く回数が変わる）", !/\.sort\(\s*\([^)]*\)\s*=>[^\n;]*\b(R|rng|rand|Math\.random)\s*\(/.test(html + gen));
-check("一行の式の途中にコメント // を足さない（行の残りが消える。rosen-hitofude 2026-11-04）", !/;\s*\/\/[^\n]*;\s*\w/.test(gen.split("\n").filter((l) => !l.trim().startsWith("//")).join("\n")));
+{ const inl = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n"); // index.html の中の script も見る（kumo-namae#1 で行の途中に // を入れて画面が動かなくなった）
+  check("一行の式の途中にコメント // を足さない（行の残りが消える。rosen-hitofude 2026-11-04・kumo-namae#1）", !/;\s*\/\/[^\n]*;\s*\w/.test((gen + "\n" + inl).split("\n").filter((l) => !l.trim().startsWith("//")).join("\n"))); }
 check("言い方：「安全です」と言い切らない", !/安全です|安心です|噴火しません/.test(html + readme));
 check("言い方：「このゲームについて」に、公式の情報の代わりではないこと・絵は描いたものであること・本当の情報を見る所がある", /公式の情報の代わりではありません/.test(html) && /描いた絵/.test(html) && /市町村/.test(html) && /気象庁/.test(html) && /代わりではありません/.test(readme));
 check("写し元（噴火警戒レベルよみ・健康情報みぬき）の言葉が残っていない（game-dev.md A 手順5）", !/噴火|火山|火口|入山|警戒レベル|レベル帳|架空の山|健康|みぬき|根拠なし|医師|薬剤師|188|商品|サプリ|なぜあやしい/.test(html + gen + readme));
@@ -467,6 +468,15 @@ try {
   await q.click(`.ch[data-j="${await ansIdx(q)}"]`); await why(q); await q.waitForSelector(".verdict");
   await q.click("#quit"); await q.waitForTimeout(150);
   check("とことんで正解した直後でも「ここで降りる」が効き、その問題も数える", (await q.textContent("#eres")).includes("1問"), await q.textContent("body"));
+  // 保存に失敗したまま「ここで降りる」を押しても、保存してあった途中の回を戻さない（CodeRabbit kumo-namae#1）
+  await q.evaluate(() => __km.start("e")); await q.waitForTimeout(100);
+  await q.click(`.ch[data-j="${await ansIdx(q)}"]`); await why(q); await q.waitForSelector(".verdict");
+  { const eid = await q.evaluate(() => __km.load().runs.e.id);
+    await q.evaluate(() => { window.__origSet = Storage.prototype.setItem; Storage.prototype.setItem = function () { throw new Error("full"); }; });
+    await q.click("#quit"); await q.waitForTimeout(150);
+    const back = await q.evaluate(() => { const r = __km.load().runs.e; return r ? r.id : null; });
+    await q.evaluate(() => { Storage.prototype.setItem = window.__origSet; __km.save(() => {}); });
+    check("保存に失敗したまま「ここで降りる」を押しても、終えた回が「とことんの続き」に戻らない", back === null && (await q.evaluate(() => __km.load().runs.e)) === null, `${eid} → ${back}`); }
   await q.close(); }
 { const q = await newPage(); await closeHow(q);
   await q.evaluate(() => { localStorage.setItem("kmn-v1", JSON.stringify({ v: 1, tut: true, days: {}, hdays: {}, adays: {}, dex: { constructor: 1, toString: 2, e: 1 }, runs: {}, kofi: {}, ach: {}, ebest: 0 })); }); await q.reload(); await q.waitForTimeout(150);
