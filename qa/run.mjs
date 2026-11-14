@@ -88,7 +88,7 @@ check("外から読むのは文字（Google Fonts）だけ。スクリプト・�
 check("CSP で通信先を自分だけにしている", /connect-src 'self'/.test(html) && !/connect-src[^;"]*https/.test(html));
 check("Math.random は練習・とことんの種だけ（今日の5問・上級は日付の乱数。data.js には無い）", (html.match(/Math\.random/g) || []).length === 2 && !/Math\.random/.test(gen));
 check("乱数は sort の比較の中で引かない（ブラウザで引く回数が変わる）", !/\.sort\(\s*\([^)]*\)\s*=>[^\n;]*\b(R|rng|rand|Math\.random)\s*\(/.test(html + gen));
-{ const inl = [...html.matchAll(/<script>([\s\S]*?)<\/script>/g)].map((m) => m[1]).join("\n"); // index.html の中の script も見る（kumo-namae#1 で行の途中に // を入れて画面が動かなくなった）
+{ const inl = html.split("<script>").slice(1).map((x) => x.split("</" + "script>")[0]).join("\n"); // index.html の中の script も見る（kumo-namae#1 で行の途中に // を入れて画面が動かなくなった）
   check("一行の式の途中にコメント // を足さない（行の残りが消える。rosen-hitofude 2026-11-04・kumo-namae#1）", !/;\s*\/\/[^\n]*;\s*\w/.test((gen + "\n" + inl).split("\n").filter((l) => !l.trim().startsWith("//")).join("\n"))); }
 check("言い方：「安全です」と言い切らない", !/安全です|安心です|噴火しません/.test(html + readme));
 check("言い方：「このゲームについて」に、公式の情報の代わりではないこと・絵は描いたものであること・本当の情報を見る所がある", /公式の情報の代わりではありません/.test(html) && /描いた絵/.test(html) && /市町村/.test(html) && /気象庁/.test(html) && /代わりではありません/.test(readme));
